@@ -23,7 +23,8 @@
     <script>
 // set = to null when real.
 
-      let subtitles = {
+      let subtitles; /*= {
+        
     "transcribeDataEndpoint": "http://freesubtitles.ai/api/2199658188",
     "fileTitle": "7454fea5-d084-4aa6-8f19-16a8bae572e1-35c99adb-c158-49cd-81c0-5eb0bf9072ae.mp4",
     "numberToUse": "2199658188",
@@ -33,7 +34,10 @@
     "message": "starting-download",
     "translating": false,
     "downloadLink": "https://dotsub-encoded-media-prod.videotms.com/3340704a-9a38-4cdd-bc8d-202b3c2f85bd/35c99adb-c158-49cd-81c0-5eb0bf9072ae/2023-02-17T23:40:18.866841/7454fea5-d084-4aa6-8f19-16a8bae572e1-35c99adb-c158-49cd-81c0-5eb0bf9072ae.mp4"
-}; // Initialize global variable to store response
+      
+  };
+  */ 
+  // Initialize global variable to store response
 
       const form = document.getElementById("form");
 
@@ -57,7 +61,7 @@
           model: "tiny",
           language: "auto-detect",
           shouldTranslate: false,
-          downloadLink: "https://dotsub-encoded-media-prod.videotms.com/3340704a-9a38-4cdd-bc8d-202b3c2f85bd/35c99adb-c158-49cd-81c0-5eb0bf9072ae/2023-02-17T23:40:18.866841/7454fea5-d084-4aa6-8f19-16a8bae572e1-35c99adb-c158-49cd-81c0-5eb0bf9072ae.mp4"
+          downloadLink: videoUrl
         
                     })
                  });
@@ -95,7 +99,9 @@ var button = document.getElementById("myButton");
 getRequestButton.addEventListener("click", async function() {
   try {
     // Make the GET request and wait for the response
-    var response = await fetch('http://freesubtitles.ai/api/5327837534');
+    //var response = await fetch('http://freesubtitles.ai/api/5327837534');
+    var response = await fetch(subtitles.transcribeDataEndpoint);
+
 
     // Convert the response to JSON
     var data = await response.json();
