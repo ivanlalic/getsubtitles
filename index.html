@@ -2,19 +2,26 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>GetSubtitles.Online</title>
+    <title>GetSubtitles</title>
   </head>
   <body>
+    <h1>GetSubtitles</h1>
+    <p>Upload a file or share the URL and click on Start Captioning...</p>
+    <p>Total hours/minutes processed:</p>
+
     <form id="form">
-      <label for="videoUrl">Video URL:</label>
-      <input type="text" id="videoUrl" name="videoUrl" required />
+      <label for="videoUrl">Audio/Video URL</label>
+      <input type="text" id="videoUrl" name="videoUrl" /><br />
+      <button type="submit">Start Captioning...</button>
+    </form>
+    <br />
+
+    <form id="formUpload">
+      <label for="fileInput">Audio/Video File</label>
+      <input id="fileInput" type="file" /><br />
       <button type="submit">Start Captioning...</button>
     </form>
 
-    <!--         
-    <button id="numberButton">numberToUse</button>
-    <p id="numberParagraph"></p><br>
-  -->
     <br />
 
     <button id="getRequest">Check status of the task</button>
@@ -26,10 +33,7 @@
     <script>
       // Initialize global variable to store response
 
-      //let subtitles;
-
       let subtitles; /*= {
-        
     "transcribeDataEndpoint": "http://freesubtitles.ai/api/2199658188",
     "fileTitle": "7454fea5-d084-4aa6-8f19-16a8bae572e1-35c99adb-c158-49cd-81c0-5eb0bf9072ae.mp4",
     "numberToUse": "2199658188",
@@ -41,14 +45,17 @@
     "downloadLink": "https://dotsub-encoded-media-prod.videotms.com/3340704a-9a38-4cdd-bc8d-202b3c2f85bd/35c99adb-c158-49cd-81c0-5eb0bf9072ae/2023-02-17T23:40:18.866841/7454fea5-d084-4aa6-8f19-16a8bae572e1-35c99adb-c158-49cd-81c0-5eb0bf9072ae.mp4"
   }; */
 
+      // Request of URL Video
       const form = document.getElementById("form");
 
       form.addEventListener("submit", (event) => {
         event.preventDefault(); // Prevent form from submitting
         const videoUrl = document.getElementById("videoUrl").value;
+        //const uploadFile = document.getElementById("fileInput");
+        //let file = uploadFile.files[0];
+        //console.log(file);
 
         // Make the POST request using the Fetch API
-
         const asyncPostCall = async () => {
           try {
             const response = await fetch("https://freesubtitles.ai/api", {
@@ -57,13 +64,12 @@
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                // your expected POST request payload goes here
-
                 apiKey: "E4gLjTpp2x",
                 model: "tiny",
                 language: "auto-detect",
                 shouldTranslate: false,
                 downloadLink: videoUrl,
+                //file: file,
               }),
             });
             const data = await response.json();
@@ -80,16 +86,41 @@
         asyncPostCall();
       });
 
-      // Get references to the button and paragraph elements
-      /*
-      var button = document.getElementById("numberButton");
-      var paragraph = document.getElementById("numberParagraph");
+      //Request of Video/Audio upload
+      const formUpload = document.getElementById("formUpload");
 
-      // Add an event listener to the button that displays the subtitles in the paragraph
-      button.addEventListener("click", function () {
-        paragraph.textContent = JSON.stringify(subtitles.numberToUse);
+      formUpload.addEventListener("submit", (event) => {
+        event.preventDefault(); // Prevent form from submitting
+        const uploadFile = document.getElementById("fileInput");
+        let file = uploadFile.files[0];
+        console.log(file);
+
+        var dataVideo = new FormData();
+        dataVideo.append("file", file);
+        dataVideo.append("apiKey", "E4gLjTpp2x");
+        dataVideo.append("model", "tiny");
+        dataVideo.append("language", "auto-detect");
+        dataVideo.append("shouldTranslate", "false");
+
+        // Make the POST request using the Fetch API
+        const asyncPostCall = async () => {
+          try {
+            const response = await fetch("https://freesubtitles.ai/api", {
+              method: "POST",
+              body: dataVideo,
+            });
+            const dataResponse = await response.json();
+            // enter you logic when the fetch is successful
+            subtitles = dataResponse;
+            console.log(subtitles);
+          } catch (error) {
+            // enter your logic for when there is an error (ex. error toast)
+
+            console.log(error);
+          }
+        };
+        asyncPostCall();
       });
-      */
 
       //function to get request
       const getRequestButton = document.getElementById("getRequest");
@@ -105,6 +136,7 @@
 
           // Convert the response to JSON
           var data = await response.json();
+          console.log(data);
 
           // Update the paragraph with the response
           paragraphFinal.textContent = JSON.stringify(data.status);
