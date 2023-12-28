@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GetSubtitles</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <style>
         /* Add some styles for the loading spinner */
         #loading-spinner {
@@ -30,161 +33,213 @@
             margin-left: 10px;
         }
 
-        /* Hide transcript container initially */
         #transcript-container {
             display: none;
         }
     </style>
 </head>
 <body>
-    <div>
-        <label for="url">Enter the URL of a video or audio file:</label>
-        <input type="url" id="url" name="url">
-        
-        <label for="file">Upload a video file:</label>
-        <input type="file" id="file" name="file" accept="video/*">
-        
-        <button id="get-subtitles">Get Subtitles</button>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <img src="GetSubtitlesLogo.png" alt="Logo" width="180" height="90">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarMenu">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Contact</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="form-group">
+                    <label for="url">Enter the URL of a video or audio file:</label>
+                    <input type="url" id="url" name="url" class="form-control">
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="form-group">
+                    <label for="file">Upload a video file:</label>
+                    <input type="file" id="file" name="file" accept="video/*" class="form-control">
+                </div>
+            </div>
+        </div>
+        <button id="get-subtitles" class="btn btn-primary mt-3">Get Subtitles</button>
         <div id="loading-spinner"></div>
         <p id="processing-message">Your file is being processed, please do not close the tab</p>
         <div id="webhook-response"></div>
-        
-        <!-- Hide transcript container initially -->
         <div id="transcript-container">
-            <button id="toggle-transcript">Show/Hide Transcript</button>
+            <button id="toggle-transcript" class="btn btn-secondary">Show/Hide Transcript</button>
             <p id="full-transcript" style="display: none;"></p>
         </div>
-        
-        <button id="download-srt" style="display: none;">Download SRT</button>
-        <button id="download-vtt" style="display: none;">Download VTT</button>
+        <button id="download-srt" class="btn btn-success" style="display: none;">Download SRT</button>
+        <button id="download-vtt" class="btn btn-success" style="display: none;">Download VTT</button>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const urlInput = document.getElementById('url');
-            const fileInput = document.getElementById('file');
-            const getSubtitlesButton = document.getElementById('get-subtitles');
-            const webhookResponse = document.getElementById('webhook-response');
-            const transcriptContainer = document.getElementById('transcript-container');
-            const fullTranscript = document.getElementById('full-transcript');
-            const toggleTranscriptButton = document.getElementById('toggle-transcript');
-            const downloadSRTButton = document.getElementById('download-srt');
-            const downloadVTTButton = document.getElementById('download-vtt');
-            const loadingSpinner = document.getElementById('loading-spinner');
-            const processingMessage = document.getElementById('processing-message');
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlInput = document.getElementById('url');
+        const fileInput = document.getElementById('file');
+        const getSubtitlesButton = document.getElementById('get-subtitles');
+        const webhookResponse = document.getElementById('webhook-response');
+        const transcriptContainer = document.getElementById('transcript-container');
+        const fullTranscript = document.getElementById('full-transcript');
+        const toggleTranscriptButton = document.getElementById('toggle-transcript');
+        const downloadSRTButton = document.getElementById('download-srt');
+        const downloadVTTButton = document.getElementById('download-vtt');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const processingMessage = document.getElementById('processing-message');
 
-            const socket = new WebSocket('wss://getsubtitlesserverv2.onrender.com');
-            let responseCount = 0; // Track the number of responses received
+        let isProcessing = false; // Flag to track processing status
 
-            socket.addEventListener('open', (event) => {
-                console.log('WebSocket connection opened:', event);
-            });
+        const startProcessing = () => {
+    getSubtitlesButton.style.display = 'none';
+    loadingSpinner.style.display = 'inline-block';
+    processingMessage.style.display = 'inline';
+    isProcessing = true;
+};
 
-            socket.addEventListener('message', (event) => {
-                const data = JSON.parse(event.data);
-                console.log('WebSocket message received:', data);
+const stopProcessing = () => {
+    // Hide the "Get Subtitles" button
+    getSubtitlesButton.style.display = 'none';
 
-                // If it's the first response (without payload), increment the response count
-                if (!data.payload) {
-                    responseCount++;
-                }
+    // Check if the latest response contains payload.transcription before hiding the spinner
+    if (latestResponse && latestResponse.payload && latestResponse.payload.transcription) {
+        loadingSpinner.style.display = 'none';
+    }
 
-                // If it's the final response (with payload), process it
-                if (data.payload) {
-                    // Display the full transcript
-                    fullTranscript.textContent = data.payload.transcription.full_transcript;
+    // Hide the processing message
+    processingMessage.style.display = 'none';
 
-                    // Show download buttons
-                    downloadSRTButton.style.display = 'block';
-                    downloadVTTButton.style.display = 'block';
+    isProcessing = false;
+};
 
-                    // Update download links with appropriate data
-                    const audioName = urlInput.value.split('/').pop() || fileInput.files[0]?.name || 'audio'; // Extract audio name from URL or file
-                    const srtContent = data.payload.transcription.subtitles.find(sub => sub.format === 'srt').subtitles;
-                    const vttContent = data.payload.transcription.subtitles.find(sub => sub.format === 'vtt').subtitles;
+        const handleGetSubtitlesClick = async () => {
+            if (isProcessing) {
+                return;
+            }
 
-                    downloadSRTButton.addEventListener('click', () => {
-                        const srtLink = document.createElement('a');
-                        const srtBlob = new Blob([srtContent], { type: 'text/srt' });
-                        srtLink.href = URL.createObjectURL(srtBlob);
-                        srtLink.download = audioName + '.srt';
-                        srtLink.click();
-                    });
+            startProcessing();
 
-                    downloadVTTButton.addEventListener('click', () => {
-                        const vttLink = document.createElement('a');
-                        const vttBlob = new Blob([vttContent], { type: 'text/vtt' });
-                        vttLink.href = URL.createObjectURL(vttBlob);
-                        vttLink.download = audioName + '.vtt';
-                        vttLink.click();
-                    });
-
-                    // Show transcript container
-                    transcriptContainer.style.display = 'block';
-
-                    // Toggle transcript visibility
-                    toggleTranscriptButton.addEventListener('click', () => {
-                        const displayStyle = fullTranscript.style.display;
-                        fullTranscript.style.display = displayStyle === 'none' ? 'block' : 'none';
-                    });
-
-                    // Hide loading spinner and processing message only when the last response is received
-                    responseCount++;
-                    if (responseCount === 2) {
-                        loadingSpinner.style.display = 'none';
-                        processingMessage.style.display = 'none';
-                    }
-                }
-            });
-
-            socket.addEventListener('close', (event) => {
-                console.log('WebSocket connection closed:', event);
-            });
-
-            getSubtitlesButton.addEventListener('click', async () => {
+            try {
                 const audio_url = urlInput.value;
                 const file = fileInput.files[0];
 
                 if (!audio_url && !file) {
-                    // Display a message if neither URL nor file is provided
                     webhookResponse.textContent = 'Please provide a valid URL or select a file.';
                     return;
                 }
 
-                // Show loading spinner and processing message
-                loadingSpinner.style.display = 'inline-block';
-                processingMessage.style.display = 'inline';
-                responseCount = 0; // Reset the response count for a new request
-
-                try {
-                    // Create a FormData object and append the file to it
-                    const formData = new FormData();
-                    if (file) {
-                        formData.append('audio', file);
-                    } else {
-                        formData.append('audio_url', audio_url);
-                    }
-
-                    // Make the request with the FormData object
-                    const response = await fetch('https://getsubtitlesserverv2.onrender.com/get-subtitles', {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-
-                    // Log the complete response to the console for inspection
-                    console.log('Gladia API Response:', data);
-                } catch (error) {
-                    console.error(error);
-                    webhookResponse.textContent = 'Error fetching subtitles.';
+                const formData = new FormData();
+                if (file) {
+                    formData.append('audio', file);
+                } else {
+                    formData.append('audio_url', audio_url);
                 }
-            });
+
+                const response = await fetch('https://getsubtitlesserverv2.onrender.com/get-subtitles', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Gladia API Response:', data);
+            } catch (error) {
+                console.error(error);
+                webhookResponse.textContent = 'Error fetching subtitles.';
+            } finally {
+                stopProcessing();
+            }
+        };
+
+        getSubtitlesButton.addEventListener('click', handleGetSubtitlesClick);
+
+        // Existing code for WebSocket initialization
+        const socket = new WebSocket('wss://getsubtitlesserverv2.onrender.com');
+        let responseCount = 0; // Track the number of responses received
+
+        socket.addEventListener('open', (event) => {
+            console.log('WebSocket connection opened:', event);
         });
-    </script>
+
+        socket.addEventListener('message', (event) => {
+            const data = JSON.parse(event.data);
+            console.log('WebSocket message received:', data);
+
+            // If it's the first response (without payload), increment the response count
+            if (!data.payload) {
+                responseCount++;
+            }
+
+            // If it's the final response (with payload), process it
+            if (data.payload) {
+                // Display the full transcript
+                fullTranscript.textContent = data.payload.transcription.full_transcript;
+
+                // Show download buttons
+                downloadSRTButton.style.display = 'block';
+                downloadVTTButton.style.display = 'block';
+
+                // Update download links with appropriate data
+                const audioName = urlInput.value.split('/').pop() || fileInput.files[0]?.name || 'audio'; // Extract audio name from URL or file
+                const srtContent = data.payload.transcription.subtitles.find(sub => sub.format === 'srt').subtitles;
+                const vttContent = data.payload.transcription.subtitles.find(sub => sub.format === 'vtt').subtitles;
+
+                downloadSRTButton.addEventListener('click', () => {
+                    const srtLink = document.createElement('a');
+                    const srtBlob = new Blob([srtContent], { type: 'text/srt' });
+                    srtLink.href = URL.createObjectURL(srtBlob);
+                    srtLink.download = audioName + '.srt';
+                    srtLink.click();
+                });
+
+                downloadVTTButton.addEventListener('click', () => {
+                    const vttLink = document.createElement('a');
+                    const vttBlob = new Blob([vttContent], { type: 'text/vtt' });
+                    vttLink.href = URL.createObjectURL(vttBlob);
+                    vttLink.download = audioName + '.vtt';
+                    vttLink.click();
+                });
+
+                // Show transcript container
+                transcriptContainer.style.display = 'block';
+
+                // Toggle transcript visibility
+                toggleTranscriptButton.addEventListener('click', () => {
+                    const displayStyle = fullTranscript.style.display;
+                    fullTranscript.style.display = displayStyle === 'none' ? 'block' : 'none';
+                });
+
+                // Hide loading spinner and processing message only when the last response is received
+                responseCount++;
+                if (responseCount === 2) {
+                    loadingSpinner.style.display = 'none';
+                    processingMessage.style.display = 'none';
+                }
+            }
+        });
+
+        socket.addEventListener('close', (event) => {
+            console.log('WebSocket connection closed:', event);
+        });
+    });
+</script>
 </body>
 </html>
