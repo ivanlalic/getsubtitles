@@ -52,7 +52,7 @@
         <!-- Hide transcript container initially -->
         <div id="transcript-container">
             <button id="toggle-transcript">Show/Hide Transcript</button>
-            <p id="full-transcript"></p>
+            <p id="full-transcript" style="display: none;"></p>
         </div>
         
         <button id="download-srt" style="display: none;">Download SRT</button>
@@ -74,6 +74,7 @@
             const processingMessage = document.getElementById('processing-message');
 
             const socket = new WebSocket('wss://getsubtitlesserverv2.onrender.com');
+            let responseCount = 0; // Track the number of responses received
 
             socket.addEventListener('open', (event) => {
                 console.log('WebSocket connection opened:', event);
@@ -83,45 +84,57 @@
                 const data = JSON.parse(event.data);
                 console.log('WebSocket message received:', data);
 
-                // Display the full transcript
-                fullTranscript.textContent = data.payload.transcription.full_transcript;
+                // If it's the first response (without payload), increment the response count
+                if (!data.payload) {
+                    responseCount++;
+                }
 
-                // Show download buttons
-                downloadSRTButton.style.display = 'block';
-                downloadVTTButton.style.display = 'block';
+                // If it's the final response (with payload), process it
+                if (data.payload) {
+                    // Display the full transcript
+                    fullTranscript.textContent = data.payload.transcription.full_transcript;
 
-                // Update download links with appropriate data
-                const audioName = urlInput.value.split('/').pop() || fileInput.files[0]?.name || 'audio'; // Extract audio name from URL or file
-                const srtContent = data.payload.transcription.subtitles.find(sub => sub.format === 'srt').subtitles;
-                const vttContent = data.payload.transcription.subtitles.find(sub => sub.format === 'vtt').subtitles;
+                    // Show download buttons
+                    downloadSRTButton.style.display = 'block';
+                    downloadVTTButton.style.display = 'block';
 
-                downloadSRTButton.addEventListener('click', () => {
-                    const srtLink = document.createElement('a');
-                    const srtBlob = new Blob([srtContent], { type: 'text/srt' });
-                    srtLink.href = URL.createObjectURL(srtBlob);
-                    srtLink.download = audioName + '.srt';
-                    srtLink.click();
-                });
+                    // Update download links with appropriate data
+                    const audioName = urlInput.value.split('/').pop() || fileInput.files[0]?.name || 'audio'; // Extract audio name from URL or file
+                    const srtContent = data.payload.transcription.subtitles.find(sub => sub.format === 'srt').subtitles;
+                    const vttContent = data.payload.transcription.subtitles.find(sub => sub.format === 'vtt').subtitles;
 
-                downloadVTTButton.addEventListener('click', () => {
-                    const vttLink = document.createElement('a');
-                    const vttBlob = new Blob([vttContent], { type: 'text/vtt' });
-                    vttLink.href = URL.createObjectURL(vttBlob);
-                    vttLink.download = audioName + '.vtt';
-                    vttLink.click();
-                });
+                    downloadSRTButton.addEventListener('click', () => {
+                        const srtLink = document.createElement('a');
+                        const srtBlob = new Blob([srtContent], { type: 'text/srt' });
+                        srtLink.href = URL.createObjectURL(srtBlob);
+                        srtLink.download = audioName + '.srt';
+                        srtLink.click();
+                    });
 
-                // Show transcript container
-                transcriptContainer.style.display = 'block';
+                    downloadVTTButton.addEventListener('click', () => {
+                        const vttLink = document.createElement('a');
+                        const vttBlob = new Blob([vttContent], { type: 'text/vtt' });
+                        vttLink.href = URL.createObjectURL(vttBlob);
+                        vttLink.download = audioName + '.vtt';
+                        vttLink.click();
+                    });
 
-                // Toggle transcript visibility
-                toggleTranscriptButton.addEventListener('click', () => {
-                    fullTranscript.style.display = fullTranscript.style.display === 'none' ? 'block' : 'none';
-                });
+                    // Show transcript container
+                    transcriptContainer.style.display = 'block';
 
-                // Hide loading spinner and processing message
-                loadingSpinner.style.display = 'none';
-                processingMessage.style.display = 'none';
+                    // Toggle transcript visibility
+                    toggleTranscriptButton.addEventListener('click', () => {
+                        const displayStyle = fullTranscript.style.display;
+                        fullTranscript.style.display = displayStyle === 'none' ? 'block' : 'none';
+                    });
+
+                    // Hide loading spinner and processing message only when the last response is received
+                    responseCount++;
+                    if (responseCount === 2) {
+                        loadingSpinner.style.display = 'none';
+                        processingMessage.style.display = 'none';
+                    }
+                }
             });
 
             socket.addEventListener('close', (event) => {
@@ -141,6 +154,7 @@
                 // Show loading spinner and processing message
                 loadingSpinner.style.display = 'inline-block';
                 processingMessage.style.display = 'inline';
+                responseCount = 0; // Reset the response count for a new request
 
                 try {
                     // Create a FormData object and append the file to it
@@ -168,10 +182,6 @@
                 } catch (error) {
                     console.error(error);
                     webhookResponse.textContent = 'Error fetching subtitles.';
-                } finally {
-                    // Hide processing message after the response is received
-                    loadingSpinner.style.display = 'none';
-                    processingMessage.style.display = 'none';
                 }
             });
         });
